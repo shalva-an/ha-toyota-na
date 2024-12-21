@@ -8,36 +8,49 @@ from toyota_na.client import ToyotaOneClient
 
 # Patch client code
 from .patch_client import get_electric_status, api_request
+
 ToyotaOneClient.get_electric_status = get_electric_status
 ToyotaOneClient.api_request = api_request
 
 # Patch base_vehicle
 import toyota_na.vehicle.base_vehicle
 from .patch_base_vehicle import ApiVehicleGeneration
+
 toyota_na.vehicle.base_vehicle.ApiVehicleGeneration = ApiVehicleGeneration
 from .patch_base_vehicle import VehicleFeatures
+
 toyota_na.vehicle.base_vehicle.VehicleFeatures = VehicleFeatures
 from .patch_base_vehicle import RemoteRequestCommand
+
 toyota_na.vehicle.base_vehicle.RemoteRequestCommand = RemoteRequestCommand
 from .patch_base_vehicle import ToyotaVehicle
+
 toyota_na.vehicle.base_vehicle.ToyotaVehicle = ToyotaVehicle
 
 # Patch seventeen_cy_plus
-from toyota_na.vehicle.vehicle_generations.seventeen_cy_plus import SeventeenCYPlusToyotaVehicle
+from toyota_na.vehicle.vehicle_generations.seventeen_cy_plus import (
+    SeventeenCYPlusToyotaVehicle,
+)
 from .patch_seventeen_cy_plus import SeventeenCYPlusToyotaVehicle
-toyota_na.vehicle.vehicle_generations.seventeen_cy_plus.SeventeenCYPlusToyotaVehicle = SeventeenCYPlusToyotaVehicle
+
+toyota_na.vehicle.vehicle_generations.seventeen_cy_plus.SeventeenCYPlusToyotaVehicle = (
+    SeventeenCYPlusToyotaVehicle
+)
 
 # Patch seventeen_cy
 from toyota_na.vehicle.vehicle_generations.seventeen_cy import SeventeenCYToyotaVehicle
 from .patch_seventeen_cy import SeventeenCYToyotaVehicle
-toyota_na.vehicle.vehicle_generations.seventeen_cy.SeventeenCYToyotaVehicle = SeventeenCYToyotaVehicle
+
+toyota_na.vehicle.vehicle_generations.seventeen_cy.SeventeenCYToyotaVehicle = (
+    SeventeenCYToyotaVehicle
+)
 
 from toyota_na.exceptions import AuthError, LoginError
 from toyota_na.vehicle.base_vehicle import RemoteRequestCommand, ToyotaVehicle
 
-#Patch get_vehicles
+# Patch get_vehicles
 from .patch_vehicle import get_vehicles
-#from toyota_na.vehicle.vehicle import get_vehicles
+# from toyota_na.vehicle.vehicle import get_vehicles
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -56,11 +69,12 @@ from .const import (
     DOOR_UNLOCK,
     REFRESH,
     UPDATE_INTERVAL,
-    REFRESH_STATUS_INTERVAL
+    REFRESH_STATUS_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["binary_sensor", "device_tracker", "lock", "sensor"]
+
 
 async def async_setup(hass: HomeAssistant, _processed_config) -> bool:
     @service.verify_domain_control(hass, DOMAIN)
@@ -77,7 +91,7 @@ async def async_setup(hass: HomeAssistant, _processed_config) -> bool:
 
         # There is currently not a case with this integration where
         # the device will have more or less than one config entry
-        if len(device.config_entries) != 1:
+        if len(device.config_entries) == 0:
             _LOGGER.warning("Device missing config entry")
             return
 
@@ -99,10 +113,13 @@ async def async_setup(hass: HomeAssistant, _processed_config) -> bool:
 
         for identifier in device.identifiers:
             if identifier[0] == DOMAIN:
-
                 vin = identifier[1]
                 for vehicle in coordinator.data:
-                    if vehicle.vin == vin and remote_action.upper() == "REFRESH" and vehicle.subscribed:
+                    if (
+                        vehicle.vin == vin
+                        and remote_action.upper() == "REFRESH"
+                        and vehicle.subscribed
+                    ):
                         await vehicle.poll_vehicle_refresh()
                         # TODO: This works great and prevents us from unnecessarily hitting Toyota. But we can and should
                         # probably do stuff like this in the library where we can better control which APIs we hit to refresh our in-memory data.
@@ -126,6 +143,7 @@ async def async_setup(hass: HomeAssistant, _processed_config) -> bool:
     hass.services.async_register(DOMAIN, REFRESH, async_service_handle)
 
     return True
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {}).setdefault(entry.entry_id, {})
@@ -168,10 +186,15 @@ def update_tokens(tokens: dict[str, str], hass: HomeAssistant, entry: ConfigEntr
     hass.config_entries.async_update_entry(entry, data=data)
 
 
-async def update_vehicles_status(hass: HomeAssistant, client: ToyotaOneClient, entry: ConfigEntry):
+async def update_vehicles_status(
+    hass: HomeAssistant, client: ToyotaOneClient, entry: ConfigEntry
+):
     need_refresh = False
     need_refresh_before = datetime.utcnow().timestamp() - REFRESH_STATUS_INTERVAL
-    if "last_refreshed_at" not in entry.data or entry.data["last_refreshed_at"] < need_refresh_before:
+    if (
+        "last_refreshed_at" not in entry.data
+        or entry.data["last_refreshed_at"] < need_refresh_before
+    ):
         need_refresh = True
     try:
         _LOGGER.debug("Updating vehicle status")
